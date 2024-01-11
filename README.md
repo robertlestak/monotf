@@ -158,10 +158,10 @@ The `path_template` configuration option allows you to infer environment variabl
 For the example above, you would configure the following:
 
 ```yaml
-path_template: "my-repo-name/{{AWS_PROFILE}}/{{AWS_REGION}}"
+path_template: "{{AWS_PROFILE}}/{{AWS_REGION}}"
 ```
 
-Then, when you run `monotf` commands in the `my-repo-name/aws01/us-east-1` workspace, the following environment variables will be set:
+Then, when you run `monotf` commands in the `aws01/us-east-1` workspace, the following environment variables will be set:
 
 ```
 AWS_PROFILE=aws01
@@ -172,7 +172,7 @@ AWS_REGION=us-east-1
 
 The `var_script` configuration option allows you to run a script in the workspace directory to set environment variables for the terraform shell. This is useful if you need to set environment variables which can be inferred from the workspace context.
 
-The script can be written any language that can be run as an executable. A `MONOTF_VARS` environment variable will be available in the script's environment. The script can write any environment variables to `MONOTF_VARS` in the format `export VAR=value`.
+The script can be written any language that can be run as an executable. A `MONOTF_VARS` environment variable will be available in the script's environment. The script can write any environment variables to `MONOTF_VARS` in the format `VAR=value`.
 
 The script is run in the workspace directory, so you can use relative paths to access files in the workspace. Additionally, inferred environment variables will be available in the script's environment.
 
