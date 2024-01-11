@@ -21,6 +21,7 @@ spec:
     spec:
       containers:
         - image: robertlestak/monotf:latest
+          imagePullPolicy: Always
           args:
           - server
           name: monotf
