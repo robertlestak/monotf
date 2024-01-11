@@ -98,8 +98,16 @@ func (w *Workspace) Save() error {
 	}
 	if err := db.DB.Clauses(clause.OnConflict{
 		// update all
-		Columns:   []clause.Column{{Name: "org"}, {Name: "name"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "output", "running", "version", "path", "lock_id"}),
+		Columns: []clause.Column{{Name: "org"}, {Name: "name"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"status",
+			"output",
+			"running",
+			"version",
+			"path",
+			"lock_id",
+			"workspace_name",
+		}),
 	}).Save(w).Error; err != nil {
 		l.WithError(err).Error("failed to save workspace")
 		return err
