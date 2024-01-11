@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monotf-v1
+  namespace: default
+  labels:
+    app: monotf
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monotf
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: monotf
+        version: v1
+    spec:
+      containers:
+        - image: robertlestak/monotf:latest
+          args:
+          - server
+          name: monotf
+          envFrom:
+          - secretRef:
+              name: monotf
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500Mi
+            requests:
+              cpu: 500m
+              memory: 500Mi
+      tolerations:
+        - key: "node.kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "PreferNoSchedule"

@@ -193,3 +193,31 @@ Note: make sure your script is executable (`chmod +x`).
 Assuming you are using a backend which requires some secret parameters to access, you will need to specify those as `TF_VAR_` environment variables. This can be done out of scope of the terraform, but it is sometimes difficult to remember / configure appropriately. If you store your variable(s) in HashiCorp Vault, you can use the `vault_env` configuration option to retrieve them automatically.
 
 You will need to set the `VAULT_TOKEN` env var first - that is still out of scope of `monotf`. Then, you can configure `monotf` to retrieve the variables from Vault before running the terraform.
+
+## Deployment
+
+Monotf operates in a client/server model. The server is used to store workspace metadata and provide a basic queueing system for workspace executions. The client is used to execute terraform commands in the workspace.
+
+Both client and server are available as precompiled binaries as well as docker images. The binaries are available on the [releases](https://github.com/robertlestak/monotf/releases) page. The docker images are available on [Docker Hub](https://hub.docker.com/r/robertlestak/monotf).
+
+### Server
+
+See `manifests` for example kubernetes yaml files for deploying the server. Note this only creates a `ClusterIP` service, you will need to expose it as appropriate for your environment. Make sure you fill in your secret values in the yaml files before deploying. Obviously at scale you would probably be using something like [external-secrets.io](https://external-secrets.io) to manage this.
+
+#### Database Backend
+
+The server relies on a database backend to store workspace metadata. Currently the server supports PostgreSQL and SQLite. The database backend is configured using environment variables. The following environment variables are supported:
+
+| Variable | Description |
+| --- | --- |
+| `DB_DRIVER` | The database driver to use. Currently supported: `sqlite`, `postgres` |
+| `DB_PATH` | The path to the database file. Only used if `DB_DRIVER=sqlite` |
+| `DB_HOST` | The database host |
+| `DB_PORT` | The database port |
+| `DB_USER` | The database user |
+| `DB_PASS` | The database password |
+| `DB_NAME` | The database name |
+
+### Client
+
+Once the server is up and running, you can configure your repo(s) to use the appropriate GitHub Actions (or similar workflow solution) to run the client. See the [.github/example-workflows](.github/example-workflows) directory for example workflows. These are intentionally minimal, you will probably want to copy / paste and modify them to suit your needs.

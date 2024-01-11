@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monotf
+  namespace: default
+  labels:
+    app: monotf
+spec:
+  type: ClusterIP
+  selector:
+    app: monotf
+  ports:
+    - protocol: TCP
+      port: 80
+      name: http
+      targetPort: 80
