@@ -1,0 +1,62 @@
+name: terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      monotf-config:
+        description: 'Monotf config file'
+        required: true
+        type: string
+        default: 'monotf.yaml'
+      repo-dir:
+        description: 'Directory to run monotf in'
+        required: true
+        type: string
+        default: '.'
+      workspace:
+        description: 'Workspace to plan (eg aws13/us-east-1)'
+        required: true
+        type: string
+      args:
+        description: 'Arguments to pass to monotf terraform'
+        required: true
+        type: string
+        default: ''
+
+jobs:
+  plan-workspace:
+    #runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - name: plan-workspace
+      run: |
+        #!/usr/bin/env bash
+        set -e
+        secretMountString=""
+        if [[ -f /var/run/secrets/kubernetes.io/serviceaccount/token ]]; then
+          secretMountString+=" -v /var/run/secrets/kubernetes.io/serviceaccount/token:/var/run/secrets/kubernetes.io/serviceaccount/token"
+        fi
+        if [[ -f /var/run/secrets/eks.amazonaws.com/serviceaccount/token ]]; then
+          secretMountString+=" -v /var/run/secrets/eks.amazonaws.com/serviceaccount/token:/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
+        fi
+        docker run --rm --net=host \
+          -v $PWD:/workdir --workdir /workdir \
+          --env AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
+          --env AWS_REGION=${AWS_REGION} \
+          --env AWS_ROLE_ARN=${AWS_ROLE_ARN} \
+          --env AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE} \
+          --env AWS_STS_REGIONAL_ENDPOINTS=${AWS_STS_REGIONAL_ENDPOINTS} \
+          ${secretMountString} \
+          ${entrypointString} \
+          ${MONOTF_IMAGE} \
+          -config $MONOTF_CONFIG \
+          -dir $REPO_DIR \
+          -w $WORKSPACE \
+          terraform $ARGS
+          
+      env:
+        MONOTF_IMAGE: robertlestak/monotf:latest
+        MONOTF_CONFIG: ${{ github.event.inputs.monotf-config }}
+        REPO_DIR: ${{ github.event.inputs.repo-dir }}
+        WORKSPACE: ${{ github.event.inputs.workspace }}
+        ARGS: ${{ github.event.inputs.args }}
