@@ -47,7 +47,7 @@ type Workspace struct {
 	Org           string          `json:"org" gorm:"uniqueIndex:idx_org_name"`
 	Name          string          `json:"name" gorm:"uniqueIndex:idx_org_name"`
 	WorkspaceName string          `json:"workspace_name" gorm:"uniqueIndex:idx_org_name"`
-	Path          string          `json:"path" yaml:"path"`
+	Path          string          `json:"path" yaml:"path" gorm:"-"`
 	Version       string          `json:"version" yaml:"version"`
 	Status        WorkspaceStatus `json:"status"`
 	Output        string          `json:"output"`
