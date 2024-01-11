@@ -1,0 +1,29 @@
+# directory in which to store terraform binaries
+bin_dir: /tmp/bin
+# supported terraform versions
+versions:
+- 1.5.7
+- 1.6.6
+# default terraform version if not specified in
+# the workspace with a .terraform-version file
+default_version: 1.6.6
+# org name, useful when using a common remote state backend
+# this will be used to create a unique workspace name
+org: testing
+# the monotf server address
+server_addr: http://localhost:8080
+# the directory in which the terraform code is stored
+dir: "test"
+# optional: infer environment variables from the path of the workspace
+# for example, if you store your code in "test/aws13" then you can
+# infer the AWS_PROFILE environment variable from the workspace path
+path_template: "test/{{AWS_PROFILE}}"
+# optional: a script which will be run in the workspace directory
+# to set environment variables for the terraform shell
+var_script: "$PWD/test/vars.sh"
+# optional: retrieve environment variables for the terraform shell
+# from a vault secret. For enterprise vault, you can specify a namespace
+vault_env:
+  addr: https://vault.example.com
+  namespace: ""
+  path: "kv/myapp/env"

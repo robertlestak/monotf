@@ -1,0 +1,24 @@
+name: build bins
+on:
+  release:
+    types: [created]
+
+  workflow_dispatch:
+    inputs:
+      release-id:
+        description: 'Release ID'
+        required: false
+
+jobs:   
+  build-bins:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Makefile
+      run: make
+    - name: Upload binaries
+      uses: AButler/upload-release-assets@v3.0
+      with:
+        files: "bin/*"
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        release-id: ${{ github.event.inputs.release-id || github.event.release.id }}
