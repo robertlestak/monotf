@@ -212,15 +212,15 @@ See `manifests` for example kubernetes yaml files for deploying the server. Note
 
 The server relies on a database backend to store workspace metadata. Currently the server supports PostgreSQL and SQLite. The database backend is configured using environment variables. The following environment variables are supported:
 
-| Variable | Description |
-| --- | --- |
-| `DB_DRIVER` | The database driver to use. Currently supported: `sqlite`, `postgres` |
-| `DB_PATH` | The path to the database file. Only used if `DB_DRIVER=sqlite` |
-| `DB_HOST` | The database host |
-| `DB_PORT` | The database port |
-| `DB_USER` | The database user |
-| `DB_PASS` | The database password |
-| `DB_NAME` | The database name |
+| Variable | Description | Driver Support |
+| --- | --- | --- |
+| `DB_DRIVER` | The database driver to use. Currently supported: `sqlite`, `postgres` | All |
+| `DB_PATH` | The path to the database file. | `sqlite` |
+| `DB_HOST` | The database host. | `postgres` |
+| `DB_PORT` | The database port. | `postgres` |
+| `DB_USER` | The database user | `postgres` |
+| `DB_PASS` | The database password | `postgres` |
+| `DB_NAME` | The database name | `postgres` |
 
 ### Client
 
