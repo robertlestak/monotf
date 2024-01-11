@@ -24,6 +24,9 @@ spec:
           args:
           - server
           name: monotf
+          ports:
+            - containerPort: 8080
+              name: http
           envFrom:
           - secretRef:
               name: monotf
