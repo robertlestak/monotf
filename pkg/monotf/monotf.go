@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -734,12 +736,21 @@ func (ws *Workspace) LockedTerraform(waitTimeout *string, args []string) (string
 	lid := uuid.New().String()
 	ws.LockId = &lid
 	var stdoutstr, stderrstr string
-	defer func() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	cleanup := func() {
 		if err := ws.SetRunning(false); err != nil {
 			l.Errorf("error setting workspace to not running: %v", err)
 			return
 		}
+	}
+	go func() {
+		sig := <-sigs
+		l.Debugf("Received signal: %s, stopping services...", sig)
+		cleanup()
+		os.Exit(0)
 	}()
+	defer cleanup()
 	if err := ws.WaitForReady(*waitTimeout); err != nil {
 		l.Errorf("error waiting for workspace to be ready: %v", err)
 		return stdoutstr, stderrstr, err
