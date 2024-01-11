@@ -1,6 +1,7 @@
 package monotf
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -85,15 +86,15 @@ func (w *Workspace) Save() error {
 		w.Running = &isRunning
 	}
 	// get current lock id from db
-	existingLockID := ""
+	var existingLockID sql.NullString
 	if err := db.DB.Model(&Workspace{}).Where("org = ? AND name = ?", w.Org, w.Name).Pluck("lock_id", &existingLockID).Error; err != nil {
 		l.WithError(err).Error("failed to get lock id")
 		return err
 	}
 	// if lock id is different, throw error unless force is set
-	if w.LockId != nil && existingLockID != "" && existingLockID != *w.LockId && !w.Force {
-		l.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, *w.LockId)
-		return fmt.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, *w.LockId)
+	if w.LockId != nil && existingLockID.Valid && *w.LockId != existingLockID.String {
+		l.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID.String, *w.LockId)
+		return fmt.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID.String, *w.LockId)
 	}
 	if err := db.DB.Clauses(clause.OnConflict{
 		// update all
