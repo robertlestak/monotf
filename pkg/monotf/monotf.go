@@ -44,17 +44,18 @@ type PathVar struct {
 
 type Workspace struct {
 	gorm.Model
-	Org      string          `json:"org" gorm:"uniqueIndex:idx_org_name"`
-	Name     string          `json:"name" gorm:"uniqueIndex:idx_org_name"`
-	Path     string          `json:"path" yaml:"path"`
-	Version  string          `json:"version" yaml:"version"`
-	Status   WorkspaceStatus `json:"status"`
-	Output   string          `json:"output"`
-	Running  *bool           `json:"running"`
-	LockId   string          `json:"lock_id"`
-	Force    bool            `json:"force" yaml:"force" gorm:"-"`
-	PathVars []PathVar       `json:"-" yaml:"-" gorm:"-"`
-	EnvVars  []string        `json:"-" yaml:"-" gorm:"-"`
+	Org           string          `json:"org" gorm:"uniqueIndex:idx_org_name"`
+	Name          string          `json:"name" gorm:"uniqueIndex:idx_org_name"`
+	WorkspaceName string          `json:"workspace_name" gorm:"uniqueIndex:idx_org_name"`
+	Path          string          `json:"path" yaml:"path"`
+	Version       string          `json:"version" yaml:"version"`
+	Status        WorkspaceStatus `json:"status"`
+	Output        string          `json:"output"`
+	Running       *bool           `json:"running"`
+	LockId        *string         `json:"lock_id"`
+	Force         bool            `json:"force" yaml:"force" gorm:"-"`
+	PathVars      []PathVar       `json:"-" yaml:"-" gorm:"-"`
+	EnvVars       []string        `json:"-" yaml:"-" gorm:"-"`
 
 	Init   bool `json:"init" yaml:"init" gorm:"-"`
 	IsInit bool `json:"is_init" yaml:"is_init" gorm:"-"`
@@ -347,10 +348,11 @@ func (w *Workspace) SetName(parentDir string) {
 	// get relative path
 	relPath := strings.ReplaceAll(w.Path, parentDir+"/", "")
 	l.Debugf("relative path is %s", relPath)
-	w.Name = fmt.Sprintf("%s-%s", w.Org, relPath)
+	w.WorkspaceName = fmt.Sprintf("%s-%s", w.Org, relPath)
 	// replace / wih - in path
-	w.Name = strings.ReplaceAll(w.Name, "/", "-")
-	l.Debugf("workspace %s name is %s", w.Path, w.Name)
+	w.Name = strings.ReplaceAll(relPath, "/", "-")
+	w.WorkspaceName = strings.ReplaceAll(w.WorkspaceName, "/", "-")
+	l.Debugf("workspace %s name is %s", w.Path, w.WorkspaceName)
 }
 
 func (m *Monotf) SupportsVersion(v string) bool {
@@ -431,20 +433,20 @@ func (w *Workspace) CreateWorkspaceIfNotExist() error {
 		"app": "monotf",
 		"fn":  "CreateWorkspaceIfNotExist",
 	})
-	l.Debugf("creating workspace %s", w.Name)
+	l.Debugf("creating workspace %s", w.WorkspaceName)
 	// run terraform workspace new $name
-	out, stderr, err := w.Terraform([]string{"workspace", "new", w.Name})
+	out, stderr, err := w.Terraform([]string{"workspace", "new", w.WorkspaceName})
 	if err != nil {
 		// if stderr contains "already exists", ignore
 		if strings.Contains(stderr, "already exists") {
-			l.Debugf("workspace %s already exists", w.Name)
+			l.Debugf("workspace %s already exists", w.WorkspaceName)
 			return nil
 		}
-		l.Errorf("error creating workspace %s: %v", w.Name, err)
+		l.Errorf("error creating workspace %s: %v", w.WorkspaceName, err)
 		l.Errorf("stderr: %s", stderr)
 		return err
 	}
-	l.Debugf("workspace %s created", w.Name)
+	l.Debugf("workspace %s created", w.WorkspaceName)
 	l.Debugf("output: %s", out)
 	return nil
 }
@@ -472,8 +474,8 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 	// and env vars:
 	cmd.Env = append(cmd.Env, "TF_IN_AUTOMATION=true")
 	if w.IsInit {
-		l.Debugf("setting TF_WORKSPACE=%s", w.Name)
-		cmd.Env = append(cmd.Env, "TF_WORKSPACE="+w.Name)
+		l.Debugf("setting TF_WORKSPACE=%s", w.WorkspaceName)
+		cmd.Env = append(cmd.Env, "TF_WORKSPACE="+w.WorkspaceName)
 	}
 	// for each of the path vars, export them
 	for _, pv := range w.PathVars {
@@ -552,7 +554,7 @@ func (w *Workspace) TerraformWorkspacePreflight() error {
 	l := log.WithFields(log.Fields{
 		"app": "monotf",
 		"fn":  "TerraformWorkspacePreflight",
-		"ws":  w.Name,
+		"ws":  w.WorkspaceName,
 		"ver": w.Version,
 	})
 	l.Debugf("running terraform preflight")
@@ -693,7 +695,7 @@ func (w *Workspace) SetRunning(running bool) error {
 	l.Debugf("locking workspace %s", w.Name)
 	w.Running = &running
 	if w.Running == nil || !*w.Running {
-		w.LockId = ""
+		w.LockId = nil
 	}
 	if err := w.SaveRemote(); err != nil {
 		l.Errorf("error saving workspace: %v", err)
@@ -729,7 +731,8 @@ func (ws *Workspace) LockedTerraform(waitTimeout *string, args []string) (string
 		l.Errorf("error running terraform preflight: %v", err)
 		os.Exit(1)
 	}
-	ws.LockId = uuid.New().String()
+	lid := uuid.New().String()
+	ws.LockId = &lid
 	var stdoutstr, stderrstr string
 	defer func() {
 		if err := ws.SetRunning(false); err != nil {
@@ -821,7 +824,8 @@ func (ws *Workspace) LockedTerraformPlanApply(waitTimeout *string) (string, stri
 		l.Errorf("error running terraform preflight: %v", err)
 		os.Exit(1)
 	}
-	ws.LockId = uuid.New().String()
+	lid := uuid.New().String()
+	ws.LockId = &lid
 	defer func() {
 		if err := ws.SetRunning(false); err != nil {
 			l.Errorf("error setting workspace to not running: %v", err)

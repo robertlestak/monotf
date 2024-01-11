@@ -91,9 +91,9 @@ func (w *Workspace) Save() error {
 		return err
 	}
 	// if lock id is different, throw error unless force is set
-	if w.LockId != "" && existingLockID != "" && existingLockID != w.LockId && !w.Force {
-		l.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, w.LockId)
-		return fmt.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, w.LockId)
+	if w.LockId != nil && existingLockID != "" && existingLockID != *w.LockId && !w.Force {
+		l.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, *w.LockId)
+		return fmt.Errorf("lock id mismatch. existing: %s, new: %s", existingLockID, *w.LockId)
 	}
 	if err := db.DB.Clauses(clause.OnConflict{
 		// update all
