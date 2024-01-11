@@ -200,6 +200,10 @@ Monotf operates in a client/server model. The server is used to store workspace 
 
 Both client and server are available as precompiled binaries as well as docker images. The binaries are available on the [releases](https://github.com/robertlestak/monotf/releases) page. The docker images are available on [Docker Hub](https://hub.docker.com/r/robertlestak/monotf).
 
+### Docker Image
+
+The docker image available in DockerHub _only_ has the `monotf` binary, `curl`, `unzip`, `sh`, and a few other packages avaiable in the `alpine` base image. In practice you will probably find the need for additional binaries in your workflow, so you will probably want to create your own image based on the `monotf` image, or by downloading the precompiled binaries and adding them to your own image.
+
 ### Server
 
 See `manifests` for example kubernetes yaml files for deploying the server. Note this only creates a `ClusterIP` service, you will need to expose it as appropriate for your environment. Make sure you fill in your secret values in the yaml files before deploying. Obviously at scale you would probably be using something like [external-secrets.io](https://external-secrets.io) to manage this.
