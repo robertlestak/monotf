@@ -507,6 +507,7 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			}
 			out = append(out, buf[:n]...)
 			outStr = string(out)
+			// write to stdout
 			fmt.Print(string(buf[:n]))
 		}
 	}()
@@ -527,7 +528,8 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			}
 			errOut = append(errOut, buf[:n]...)
 			errOutStr = string(errOut)
-			fmt.Print(string(buf[:n]))
+			// write to stderr
+			fmt.Fprint(os.Stderr, string(buf[:n]))
 		}
 	}()
 	err = cmd.Run()
