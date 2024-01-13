@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/robertlestak/monotf/pkg/monotf"
 	log "github.com/sirupsen/logrus"
@@ -144,6 +145,9 @@ func main() {
 			ws.EnvVars = append(ws.EnvVars, envVars...)
 		}
 		if monotf.M.VarScript != "" {
+			if !filepath.IsAbs(monotf.M.VarScript) {
+				monotf.M.VarScript = filepath.Join(monotf.M.RepoDir, monotf.M.VarScript)
+			}
 			envVars, err := ws.VarsFromScript()
 			if err != nil {
 				l.Errorf("error getting vars from script: %v", err)
