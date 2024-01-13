@@ -146,7 +146,12 @@ func main() {
 		}
 		if monotf.M.VarScript != "" {
 			if !filepath.IsAbs(monotf.M.VarScript) {
-				monotf.M.VarScript = filepath.Join(monotf.M.RepoDir, monotf.M.VarScript)
+				cwd, err := os.Getwd()
+				if err != nil {
+					l.Errorf("error getting current dir: %v", err)
+					os.Exit(1)
+				}
+				monotf.M.VarScript = filepath.Join(cwd, monotf.M.VarScript)
 			}
 			envVars, err := ws.VarsFromScript()
 			if err != nil {
