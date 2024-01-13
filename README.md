@@ -172,7 +172,7 @@ AWS_REGION=us-east-1
 
 The `var_script` configuration option allows you to run a script in the workspace directory to set environment variables for the terraform shell. This is useful if you need to set environment variables which can be inferred from the workspace context.
 
-The script can be written any language that can be run as an executable. A `MONOTF_VARS` environment variable will be available in the script's environment. The script can write any environment variables to `MONOTF_VARS` in the format `VAR=value`.
+The script can be written any language that can be run as an executable. A `MONOTF_ENV` environment variable will be available in the script's environment. The script can write any environment variables to `MONOTF_ENV` in the format `VAR=value`.
 
 The script is run in the workspace directory, so you can use relative paths to access files in the workspace. Additionally, inferred environment variables will be available in the script's environment.
 
@@ -181,7 +181,7 @@ For example, assuming you set the above `path_template` configuration, you could
 ```bash
 #!/bin/bash
 account_number=$(aws sts get-caller-identity --profile $AWS_PROFILE --query Account --output text)
-echo TF_VAR_role_arn=arn:aws:iam::$account_number:role/TerraformIAM >> $MONOTF_VARS
+echo TF_VAR_role_arn=arn:aws:iam::$account_number:role/TerraformIAM >> $MONOTF_ENV
 ```
 
 Note that it is using the `AWS_PROFILE` environment variable which was inferred from the workspace path to run a command to then set the `TF_VAR_role_arn` environment variable.

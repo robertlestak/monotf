@@ -914,8 +914,8 @@ func (ws *Workspace) VarsFromScript() ([]string, error) {
 	defer os.Remove(varFile.Name())
 	cmd := exec.Command(os.ExpandEnv(M.VarScript))
 	cmd.Env = os.Environ()
-	// add MONOTF_VARS to env
-	cmd.Env = append(cmd.Env, fmt.Sprintf("MONOTF_VARS=%s", varFile.Name()))
+	// add MONOTF_ENV to env
+	cmd.Env = append(cmd.Env, fmt.Sprintf("MONOTF_ENV=%s", varFile.Name()))
 	cmd.Env = append(cmd.Env, ws.EnvVars...)
 	cmd.Dir = ws.Path
 	// run the script
