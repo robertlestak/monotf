@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robertlestak/monotf/internal/db"
+	"github.com/robertlestak/monotf/internal/metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -324,6 +327,52 @@ func HandleAllStatusCount(w http.ResponseWriter, r *http.Request) {
 	l.Debug("end")
 }
 
+func getMetrics() error {
+	l := log.WithField("func", "getMetrics")
+	l.Debug("getting metrics")
+	go func() {
+		counts, err := GetAllStatusCount()
+		if err != nil {
+			l.WithError(err).Error("error getting all status count")
+			return
+		}
+		for _, c := range counts {
+			for status, cv := range c.Counts {
+				metrics.WorkspaceStatus.WithLabelValues(c.Org, string(status)).Set(float64(cv))
+			}
+		}
+	}()
+	go func() {
+		ws, err := ListAllWorkspaces()
+		if err != nil {
+			l.WithError(err).Error("error getting all workspaces")
+			return
+		}
+		for _, w := range ws {
+			metrics.WorkspaceStatus.WithLabelValues(w.Org, w.Name, w.Version, string(w.Status)).Set(1)
+			metrics.WorkspaceLastRun.WithLabelValues(w.Org, w.Name).Set(float64(w.UpdatedAt.Unix()))
+			if w.Running != nil && *w.Running {
+				metrics.WorkspaceRunning.WithLabelValues(w.Org, w.Name).Set(1)
+			} else {
+				metrics.WorkspaceRunning.WithLabelValues(w.Org, w.Name).Set(0)
+			}
+		}
+	}()
+	return nil
+}
+
+func refreshMetrics() {
+	l := log.WithField("func", "refreshMetrics")
+	l.Debug("refreshing metrics")
+	for {
+		time.Sleep(10 * time.Second)
+		err := getMetrics()
+		if err != nil {
+			l.WithError(err).Error("error getting metrics")
+		}
+	}
+}
+
 func Server(port int) error {
 	l := log.WithFields(log.Fields{
 		"pkg": "ws",
@@ -334,6 +383,8 @@ func Server(port int) error {
 		l.Fatal(err)
 	}
 	db.DB.AutoMigrate(&Workspace{})
+	metrics.Init()
+	go refreshMetrics()
 	r := mux.NewRouter()
 	r.HandleFunc("/orgs", HandleListOrgs).Methods("GET")
 	r.HandleFunc("/orgs/status-count", HandleAllStatusCount).Methods("GET")
@@ -348,6 +399,7 @@ func Server(port int) error {
 	r.HandleFunc("/ws/{org}/{name}", HandleGetWorkspace).Methods("GET")
 	r.HandleFunc("/ws/{org}/status/{status}", HandleListOrgWorkspacesByStatus).Methods("GET")
 	r.HandleFunc("/meta/statuses", HandleListValidStatuses).Methods("GET")
+	r.Handle("/metrics", promhttp.Handler())
 	l.WithField("port", port).Info("starting server")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), r)
 }
