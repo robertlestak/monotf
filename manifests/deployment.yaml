@@ -18,6 +18,10 @@ spec:
       labels:
         app: monotf
         version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - image: robertlestak/monotf:latest
