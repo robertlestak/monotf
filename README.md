@@ -194,7 +194,7 @@ Assuming you are using a backend which requires some secret parameters to access
 
 You will need to set the `VAULT_TOKEN` env var first - that is still out of scope of `monotf`. Then, you can configure `monotf` to retrieve the variables from Vault before running the terraform.
 
-## Deployment
+## Server Deployment
 
 Monotf operates in a client/server model. The server is used to store workspace metadata and provide a basic queueing system for workspace executions. The client is used to execute terraform commands in the workspace.
 
@@ -204,11 +204,11 @@ Both client and server are available as precompiled binaries as well as docker i
 
 The docker image available in DockerHub _only_ has the `monotf` binary, `curl`, `unzip`, `sh`, and a few other packages avaiable in the `alpine` base image. In practice you will probably find the need for additional binaries in your workflow, so you will probably want to create your own image based on the `monotf` image, or by downloading the precompiled binaries and adding them to your own image.
 
-### Server
+### Kubernetes
 
 See `manifests` for example kubernetes yaml files for deploying the server. Note this only creates a `ClusterIP` service, you will need to expose it as appropriate for your environment. Make sure you fill in your secret values in the yaml files before deploying. Obviously at scale you would probably be using something like [external-secrets.io](https://external-secrets.io) to manage this.
 
-#### Database Backend
+### Database Backend
 
 The server relies on a database backend to store workspace metadata. Currently the server supports PostgreSQL and SQLite. The database backend is configured using environment variables. The following environment variables are supported:
 
@@ -222,6 +222,12 @@ The server relies on a database backend to store workspace metadata. Currently t
 | `DB_PASS` | The database password | `postgres` |
 | `DB_NAME` | The database name | `postgres` |
 
-### Client
+## Repository Set Up
 
-Once the server is up and running, you can configure your repo(s) to use the appropriate GitHub Actions (or similar workflow solution) to run the client. See the [.github/example-workflows](.github/example-workflows) directory for example workflows. These are intentionally minimal, you will probably want to copy / paste and modify them to suit your needs.
+Once the server is up and running, you can add new monorepos to it. You will need to create a `monotf.yaml` file in the root of the repo. See the [Configuration File](#configuration-file) section above for details on the configuration options. You can use multiple `monotf.yaml` files in a single repo, but they must either be in different directories, or you must pass the `-config` flag with the path to the config file.
+
+It is recommended to set the `org` to the repo / "resource vertical" name, but it really can be any string you want.
+
+If the terraform workspace folders are in the root of the repo, you can leave the `dir` configuration option blank. Otherwise, you will need to set the `dir` to the path of the directory in which the terraform workspace folders are stored.
+
+Configure your repo(s) to use the appropriate GitHub Actions (or similar workflow solution) to run the client. See the [.github/example-workflows](.github/example-workflows) directory for example workflows. These are intentionally minimal, you will probably want to copy / paste and modify them to suit your needs.
