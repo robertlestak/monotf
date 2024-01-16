@@ -338,7 +338,7 @@ func getMetrics() error {
 		}
 		for _, c := range counts {
 			for status, cv := range c.Counts {
-				metrics.WorkspaceStatus.WithLabelValues(c.Org, string(status)).Set(float64(cv))
+				metrics.OrgStatusSummary.WithLabelValues(c.Org, string(status)).Set(float64(cv))
 			}
 		}
 	}()
