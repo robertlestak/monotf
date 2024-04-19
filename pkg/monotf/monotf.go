@@ -767,6 +767,10 @@ func (ws *Workspace) LockedTerraform(waitTimeout *string, args []string) (string
 		l.Errorf("error running terraform: %v", err)
 		return stdoutstr, stderrstr, err
 	}
+	if log.GetLevel() == log.DebugLevel {
+		l.Debugf("stdout: %s", stdoutstr)
+		l.Debugf("stderr: %s", stderrstr)
+	}
 	if err := ws.SetOutput(); err != nil {
 		l.Errorf("error setting workspace output: %v", err)
 		return stdoutstr, stderrstr, err
