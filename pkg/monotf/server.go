@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -373,6 +374,36 @@ func refreshMetrics() {
 	}
 }
 
+// authMiddleware will check if there is a MONOTF_TOKEN environment variable
+// if so, it will check if the request has a header with the same token in it
+// if not, it will return a 401
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l := log.WithFields(log.Fields{
+			"pkg": "ws",
+			"fn":  "authMiddleware",
+		})
+		l.Debug("start")
+		if os.Getenv("MONOTF_TOKEN") == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		token := r.Header.Get("Authorization")
+		if token == "" {
+			l.Debug("no token provided")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if token != "token "+os.Getenv("MONOTF_TOKEN") && token != os.Getenv("MONOTF_TOKEN") {
+			l.Debug("invalid token")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+		l.Debug("end")
+	})
+}
+
 func Server(port int) error {
 	l := log.WithFields(log.Fields{
 		"pkg": "ws",
@@ -386,20 +417,22 @@ func Server(port int) error {
 	metrics.Init()
 	go refreshMetrics()
 	r := mux.NewRouter()
-	r.HandleFunc("/orgs", HandleListOrgs).Methods("GET")
-	r.HandleFunc("/orgs/status-count", HandleAllStatusCount).Methods("GET")
-	r.HandleFunc("/ws", HandleSaveWorkspace).Methods("PUT", "POST")
-	r.HandleFunc("/ws/org/like", HandleListOrgWorkspacesLike).Methods("GET")
-	r.HandleFunc("/ws/all", HandleListAllWorkspaces).Methods("GET")
-	r.HandleFunc("/ws/all/like", HandleListAllWorkspacesLike).Methods("GET")
-	r.HandleFunc("/ws/{org}/status-count", HandleOrgStatusCount).Methods("GET")
-	r.HandleFunc("/ws/status/{status}", HandleListAllWorkspacesByStatus).Methods("GET")
-	r.HandleFunc("/ws/org/{org}", HandleListOrgWorkspaces).Methods("GET")
-	r.HandleFunc("/ws/{org}/{name}", HandleDeleteWorkspace).Methods("DELETE")
-	r.HandleFunc("/ws/{org}/{name}", HandleGetWorkspace).Methods("GET")
-	r.HandleFunc("/ws/{org}/status/{status}", HandleListOrgWorkspacesByStatus).Methods("GET")
-	r.HandleFunc("/meta/statuses", HandleListValidStatuses).Methods("GET")
+	ar := r.NewRoute().Subrouter()
 	r.Handle("/metrics", promhttp.Handler())
+	ar.Use(authMiddleware)
+	ar.HandleFunc("/orgs", HandleListOrgs).Methods("GET")
+	ar.HandleFunc("/orgs/status-count", HandleAllStatusCount).Methods("GET")
+	ar.HandleFunc("/ws", HandleSaveWorkspace).Methods("PUT", "POST")
+	ar.HandleFunc("/ws/org/like", HandleListOrgWorkspacesLike).Methods("GET")
+	ar.HandleFunc("/ws/all", HandleListAllWorkspaces).Methods("GET")
+	ar.HandleFunc("/ws/all/like", HandleListAllWorkspacesLike).Methods("GET")
+	ar.HandleFunc("/ws/{org}/status-count", HandleOrgStatusCount).Methods("GET")
+	ar.HandleFunc("/ws/status/{status}", HandleListAllWorkspacesByStatus).Methods("GET")
+	ar.HandleFunc("/ws/org/{org}", HandleListOrgWorkspaces).Methods("GET")
+	ar.HandleFunc("/ws/{org}/{name}", HandleDeleteWorkspace).Methods("DELETE")
+	ar.HandleFunc("/ws/{org}/{name}", HandleGetWorkspace).Methods("GET")
+	ar.HandleFunc("/ws/{org}/status/{status}", HandleListOrgWorkspacesByStatus).Methods("GET")
+	ar.HandleFunc("/meta/statuses", HandleListValidStatuses).Methods("GET")
 	l.WithField("port", port).Info("starting server")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), r)
 }

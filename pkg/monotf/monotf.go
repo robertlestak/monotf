@@ -583,6 +583,20 @@ func SysInit() error {
 	return nil
 }
 
+func (w *Workspace) MonotfToken() string {
+	if os.Getenv("MONOTF_TOKEN") != "" {
+		return os.Getenv("MONOTF_TOKEN")
+	}
+	// loop through the workspace env vars, split on =, and find key MONOTF_TOKEN if exists
+	for _, e := range w.EnvVars {
+		ev := strings.Split(e, "=")
+		if ev[0] == "MONOTF_TOKEN" {
+			return ev[1]
+		}
+	}
+	return ""
+}
+
 func (w *Workspace) GetStatus() (Workspace, error) {
 	l := log.WithFields(log.Fields{
 		"app": "monotf",
@@ -596,7 +610,12 @@ func (w *Workspace) GetStatus() (Workspace, error) {
 		l.Errorf("error creating request: %v", err)
 		return rw, err
 	}
+
+	tokenVar := w.MonotfToken()
 	req.Header.Set("Content-Type", "application/json")
+	if tokenVar != "" {
+		req.Header.Set("Authorization", "token "+tokenVar)
+	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -671,7 +690,11 @@ func (w *Workspace) SaveRemote() error {
 		l.Errorf("error creating request: %v", err)
 		return err
 	}
+	tokenVar := w.MonotfToken()
 	req.Header.Set("Content-Type", "application/json")
+	if tokenVar != "" {
+		req.Header.Set("Authorization", "token "+tokenVar)
+	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
