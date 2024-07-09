@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -495,7 +496,17 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 		l.Errorf("error getting stdout pipe: %v", err)
 		return outStr, errOutStr, err
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		l.Errorf("error getting stderr pipe: %v", err)
+		return outStr, errOutStr, err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	go func() {
+		defer wg.Done()
 		for {
 			buf := make([]byte, 1024)
 			n, err := stdout.Read(buf)
@@ -511,12 +522,9 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			fmt.Print(string(buf[:n]))
 		}
 	}()
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		l.Errorf("error getting stderr pipe: %v", err)
-		return outStr, errOutStr, err
-	}
+
 	go func() {
+		defer wg.Done()
 		for {
 			buf := make([]byte, 1024)
 			n, err := stderr.Read(buf)
@@ -532,11 +540,21 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			fmt.Fprint(os.Stderr, string(buf[:n]))
 		}
 	}()
-	err = cmd.Run()
+
+	err = cmd.Start()
+	if err != nil {
+		l.Errorf("error starting command: %v", err)
+		return outStr, errOutStr, err
+	}
+
+	wg.Wait()
+
+	err = cmd.Wait()
 	if err != nil {
 		l.Errorf("error running %s %s: %v", binPath, argStr, err)
 		return outStr, errOutStr, err
 	}
+
 	l.Debugf("ran %s %s", binPath, argStr)
 	// combine stdout and stderr, base64 encode, and set to w.Output
 	w.Output = base64.StdEncoding.EncodeToString(append(out, errOut...))
