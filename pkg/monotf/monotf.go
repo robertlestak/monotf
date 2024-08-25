@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -495,7 +496,17 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 		l.Errorf("error getting stdout pipe: %v", err)
 		return outStr, errOutStr, err
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		l.Errorf("error getting stderr pipe: %v", err)
+		return outStr, errOutStr, err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	go func() {
+		defer wg.Done()
 		for {
 			buf := make([]byte, 1024)
 			n, err := stdout.Read(buf)
@@ -511,12 +522,9 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			fmt.Print(string(buf[:n]))
 		}
 	}()
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		l.Errorf("error getting stderr pipe: %v", err)
-		return outStr, errOutStr, err
-	}
+
 	go func() {
+		defer wg.Done()
 		for {
 			buf := make([]byte, 1024)
 			n, err := stderr.Read(buf)
@@ -532,11 +540,21 @@ func (w *Workspace) Terraform(args []string) (string, string, error) {
 			fmt.Fprint(os.Stderr, string(buf[:n]))
 		}
 	}()
-	err = cmd.Run()
+
+	err = cmd.Start()
+	if err != nil {
+		l.Errorf("error starting command: %v", err)
+		return outStr, errOutStr, err
+	}
+
+	wg.Wait()
+
+	err = cmd.Wait()
 	if err != nil {
 		l.Errorf("error running %s %s: %v", binPath, argStr, err)
 		return outStr, errOutStr, err
 	}
+
 	l.Debugf("ran %s %s", binPath, argStr)
 	// combine stdout and stderr, base64 encode, and set to w.Output
 	w.Output = base64.StdEncoding.EncodeToString(append(out, errOut...))
@@ -583,6 +601,20 @@ func SysInit() error {
 	return nil
 }
 
+func (w *Workspace) MonotfToken() string {
+	if os.Getenv("MONOTF_TOKEN") != "" {
+		return os.Getenv("MONOTF_TOKEN")
+	}
+	// loop through the workspace env vars, split on =, and find key MONOTF_TOKEN if exists
+	for _, e := range w.EnvVars {
+		ev := strings.Split(e, "=")
+		if ev[0] == "MONOTF_TOKEN" {
+			return ev[1]
+		}
+	}
+	return ""
+}
+
 func (w *Workspace) GetStatus() (Workspace, error) {
 	l := log.WithFields(log.Fields{
 		"app": "monotf",
@@ -596,7 +628,12 @@ func (w *Workspace) GetStatus() (Workspace, error) {
 		l.Errorf("error creating request: %v", err)
 		return rw, err
 	}
+
+	tokenVar := w.MonotfToken()
 	req.Header.Set("Content-Type", "application/json")
+	if tokenVar != "" {
+		req.Header.Set("Authorization", "token "+tokenVar)
+	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -671,7 +708,11 @@ func (w *Workspace) SaveRemote() error {
 		l.Errorf("error creating request: %v", err)
 		return err
 	}
+	tokenVar := w.MonotfToken()
 	req.Header.Set("Content-Type", "application/json")
+	if tokenVar != "" {
+		req.Header.Set("Authorization", "token "+tokenVar)
+	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -766,6 +807,10 @@ func (ws *Workspace) LockedTerraform(waitTimeout *string, args []string) (string
 	if err != nil {
 		l.Errorf("error running terraform: %v", err)
 		return stdoutstr, stderrstr, err
+	}
+	if log.GetLevel() == log.DebugLevel {
+		l.Debugf("stdout: %s", stdoutstr)
+		l.Debugf("stderr: %s", stderrstr)
 	}
 	if err := ws.SetOutput(); err != nil {
 		l.Errorf("error setting workspace output: %v", err)
