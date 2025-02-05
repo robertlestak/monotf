@@ -13,6 +13,7 @@ type VaultEnv struct {
 	Addr      string `json:"addr" yaml:"addr"`
 	Namespace string `json:"namespace" yaml:"namespace"`
 	Path      string `json:"path" yaml:"path"`
+	Token     string `json:"token" yaml:"token"`
 }
 
 func (v *VaultEnv) Get() ([]string, error) {
@@ -38,10 +39,15 @@ func (v *VaultEnv) Get() ([]string, error) {
 		l.Errorf("vault path not set")
 		return nil, errors.New("vault path not set")
 	}
-	if os.Getenv("VAULT_TOKEN") == "" {
-		l.Errorf("VAULT_TOKEN not set")
-		return nil, errors.New("VAULT_TOKEN not set")
+	v.Token = os.ExpandEnv(v.Token)
+	if v.Token == "" {
+		v.Token = os.Getenv("VAULT_TOKEN")
 	}
+	if v.Token == "" {
+		l.Errorf("vault token not set")
+		return nil, errors.New("vault token not set")
+	}
+	client.SetToken(v.Token)
 	var secrets map[string]interface{}
 	var envVars []string
 	ss := strings.Split(v.Path, "/")
